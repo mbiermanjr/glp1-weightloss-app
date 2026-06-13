@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMSR — Eat · Move · Sleep · Repeat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#E7EBE8; --surface:#FBFCFB; --surface-2:#EFF2EF;
+    --ink:#14201C; --muted:#5A6862; --line:#D3DAD5; --line-strong:#BFC8C2;
+    --accent-deep:#0F5246;
+    --readout-bg:#14201C; --readout-fg:#ffffff; --readout-muted:#9fb1a9;
+    /* accent + derivatives are set by JS */
+    --accent:#DC4B3E; --accent-hover:#bf3d31; --accent-bright:#ff7d6e;
+    --radius:14px;
+    --display:'Space Grotesk',system-ui,sans-serif;
+    --body:'Inter',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  [data-theme="dark"]{
+    --bg:#0E1311; --surface:#161D19; --surface-2:#1E2621;
+    --ink:#E9EEEA; --muted:#94A39B; --line:#283029; --line-strong:#3A453E;
+    --accent-deep:#5FB39E;
+    --readout-bg:#080B09; --readout-fg:#F2F5F2; --readout-muted:#8DA098;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:var(--body); font-size:16px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; padding:24px 18px 80px;
+    transition:background .3s ease,color .3s ease;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+
+  /* Top bar: brand + controls */
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+  .mark{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.06em}
+  .mark .cyc{color:var(--accent);margin-left:5px;display:inline-block}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .swatches{display:flex;gap:7px;align-items:center}
+  .swatch{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;box-shadow:0 0 0 1px var(--line) inset}
+  .swatch.sel{border-color:var(--ink)}
+  .swatch.custom{display:grid;place-items:center;background:var(--surface-2);font-size:13px;color:var(--muted);position:relative;overflow:hidden;box-shadow:0 0 0 1px var(--line) inset}
+  .swatch.custom input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .themebtn{font-family:var(--body);font-size:13px;font-weight:550;background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+  .themebtn:hover{border-color:var(--line-strong)}
+
+  /* Header */
+  header{margin:0 2px 22px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,7vw,46px);line-height:1.0;letter-spacing:-.02em;margin:0}
+  h1 em{font-style:normal;color:var(--accent)}
+  .sub{color:var(--muted);max-width:50ch;margin:14px 0 0;font-size:15px}
+
+  /* Progress rail */
+  .rail{display:flex;gap:6px;margin:24px 2px 18px}
+  .rail span{height:4px;flex:1;background:var(--line);border-radius:999px;transition:background .3s ease}
+  .rail span.done{background:var(--accent-deep)}
+  .rail span.active{background:var(--accent)}
+
+  /* Card */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px 24px}
+  .step{display:none}
+  .step.show{display:block;animation:rise .32s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .step-no{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.08em}
+  .q{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.01em;margin:6px 0 4px}
+  .hint{color:var(--muted);font-size:14px;margin:0 0 18px}
+
+  .field{margin:0 0 16px}
+  label.lbl,.lbl{display:block;font-size:13px;font-weight:550;color:var(--muted);margin:0 0 7px}
+  input[type=number],input[type=text]{
+    width:100%;font-family:var(--mono);font-size:17px;color:var(--ink);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    padding:13px 14px;outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  input:focus{border-color:var(--accent-deep);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-deep) 22%,transparent)}
+  .row{display:flex;gap:12px}
+  .row .field{flex:1}
+
+  .opts{display:grid;gap:10px}
+  .opts.two{grid-template-columns:1fr 1fr}
+  .opt{position:relative;display:block;cursor:pointer;border:1px solid var(--line);border-radius:11px;padding:14px 15px;background:var(--surface-2);transition:border-color .15s,background .15s}
+  .opt:hover{border-color:var(--line-strong)}
+  .opt input{position:absolute;opacity:0;pointer-events:none}
+  .opt .ot{font-weight:600;font-size:15px;display:block}
+  .opt .od{font-size:13px;color:var(--muted);margin-top:2px;display:block}
+  .opt:has(input:checked){border-color:var(--accent-deep);background:color-mix(in srgb,var(--accent-deep) 8%,var(--surface-2));box-shadow:inset 3px 0 0 var(--accent-deep)}
+  .opt:has(input:focus-visible){box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-deep) 22%,transparent)}
+
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);padding:3px;margin-bottom:16px}
+  .seg button{font-family:var(--body);font-size:13px;font-weight:550;border:0;background:transparent;color:var(--muted);padding:7px 16px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--ink);color:var(--bg)}
+
+  .slider-val{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--accent-deep)}
+  .slider-val span{font-size:14px;color:var(--muted);font-weight:500;margin-left:6px;font-family:var(--body)}
+  input[type=range]{width:100%;accent-color:var(--accent-deep);margin-top:8px}
+
+  .err{color:var(--accent);font-size:13px;margin:-6px 0 12px;min-height:0}
+
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:12px;flex-wrap:wrap}
+  .nav .grp{display:flex;gap:10px;flex-wrap:wrap}
+  button.btn{font-family:var(--body);font-weight:600;font-size:15px;border-radius:10px;cursor:pointer;padding:13px 22px;border:1px solid transparent;transition:transform .08s,background .15s}
+  button.btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-hover)}
+  .btn.ghost{background:transparent;color:var(--muted);border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--line-strong);color:var(--ink)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* Results */
+  .result{display:none}
+  .result.show{display:block;animation:rise .32s ease}
+  .readout{background:var(--readout-bg);color:var(--readout-fg);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin:0 0 16px}
+  .readout .rl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--readout-muted)}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:18px 14px;margin-top:16px}
+  .metric .mv{font-family:var(--mono);font-weight:700;font-size:30px;line-height:1;letter-spacing:-.02em}
+  .metric .mv .u{font-size:13px;color:var(--readout-muted);font-weight:500;margin-left:5px;font-family:var(--body)}
+  .metric .mk{font-size:12px;color:var(--readout-muted);margin-top:7px}
+  .metric.hero .mv{color:var(--accent-bright)}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:0 0 16px}
+  .panel h3{font-family:var(--display);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-weight:600}
+
+  .week{display:flex;flex-direction:column}
+  .day{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+  .day:first-child{border-top:0}
+  .day .dn{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:2px}
+  .day .dt{font-weight:600;font-size:15px}
+  .day .dt .tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px;margin-left:8px;vertical-align:1px}
+  .tag.lift{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+  .tag.cond{background:color-mix(in srgb,var(--accent-deep) 16%,transparent);color:var(--accent-deep)}
+  .tag.rest{background:var(--surface-2);color:var(--muted)}
+  .day .dd{font-size:13px;color:var(--muted);margin-top:2px}
+
+  .notes{list-style:none;padding:0;margin:0}
+  .notes li{position:relative;padding:0 0 0 20px;margin:0 0 11px;font-size:14px;color:var(--ink)}
+  .notes li::before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:2px;background:var(--accent-deep)}
+  .notes li:last-child{margin-bottom:0}
+
+  .disclaimer{font-size:12px;color:var(--muted);line-height:1.6;margin:18px 2px 0}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px;font-family:var(--mono);letter-spacing:.04em}
+
+  /* Print header — hidden on screen */
+  .print-head{display:none}
+
+  @media (max-width:520px){
+    .opts.two{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* PRINT / PDF */
+  @media print{
+    .topbar,.rail,.card,footer,.nav{display:none!important}
+    body{background:#fff;color:#000;padding:0;font-size:12pt}
+    .wrap{max-width:none}
+    .print-head{display:block;border-bottom:2px solid #000;margin:0 0 18px;padding-bottom:10px}
+    .ph-brand{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.06em}
+    .ph-tag{font-size:12px;letter-spacing:.04em;color:#333;margin-top:2px}
+    .ph-meta{font-family:var(--mono);font-size:11px;color:#555;margin-top:6px}
+    .readout{background:#fff!important;color:#000!important;border:1.5px solid #000}
+    .readout .rl,.metric .mk,.metric .mv .u{color:#444!important}
+    .metric .mv,.metric.hero .mv{color:#000!important}
+    .panel{border-color:#bbb;break-inside:avoid}
+    .tag{border:1px solid #999;background:#fff!important;color:#000!important}
+    .notes li::before{background:#000}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="mark">EMSR<span class="cyc">&#8635;</span></div>
+    <div class="controls">
+      <div class="swatches" id="swatches"></div>
+      <button class="themebtn" id="themeBtn">&#9790; Dark</button>
+    </div>
+  </div>
+
+  <header>
+    <p class="eyebrow">Personal training plan</p>
+    <h1>Eat. Move.<br>Sleep. <em>Repeat.</em></h1>
+    <p class="sub">Answer a few questions and get a calorie target, protein floor, and a weekly plan tuned to keep muscle while you change body composition.</p>
+  </header>
+
+  <div class="rail" id="rail"></div>
+
+  <div class="card">
+    <section class="step show" data-step="0">
+      <div class="step-no">01 / You</div>
+      <div class="q">The basics</div>
+      <p class="hint">Used to estimate how much energy your body burns at rest.</p>
+      <div class="field">
+        <span class="lbl">Sex (for metabolic estimate)</span>
+        <div class="opts two">
+          <label class="opt"><input type="radio" name="sex" value="male"><span class="ot">Male</span></label>
+          <label class="opt"><input type="radio" name="sex" value="female"><span class="ot">Female</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="age">Age</label>
+        <input type="number" id="age" min="14" max="100" placeholder="e.g. 38" inputmode="numeric">
+      </div>
+      <div class="err" id="err0"></div>
+    </section>
+
+    <section class="step" data-step="1">
+      <div class="step-no">02 / Measurements</div>
+      <div class="q">Height &amp; weight</div>
+      <p class="hint">Body fat is optional — include it for a sharper protein target.</p>
+      <div class="seg" id="unitSeg">
+        <button type="button" data-unit="metric" class="on">Metric</button>
+        <button type="button" data-unit="imperial">Imperial</button>
+      </div>
+      <div id="metricFields">
+        <div class="row">
+          <div class="field"><label class="lbl" for="cm">Height (cm)</label><input type="number" id="cm" min="120" max="230" placeholder="175" inputmode="numeric"></div>
+          <div class="field"><label class="lbl" for="kg">Weight (kg)</label><input type="number" id="kg" min="35" max="300" placeholder="82" inputmode="decimal"></div>
+        </div>
+      </div>
+      <div id="imperialFields" style="display:none">
+        <div class="row">
+          <div class="field"><label class="lbl" for="ft">Height (ft)</label><input type="number" id="ft" min="4" max="7" placeholder="5" inputmode="numeric"></div>
+          <div class="field"><label class="lbl" for="inch">(in)</label><input type="number" id="inch" min="0" max="11" placeholder="9" inputmode="numeric"></div>
+          <div class="field"><label class="lbl" for="lb">Weight (lb)</label><input type="number" id="lb" min="75" max="660" placeholder="180" inputmode="decimal"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="bf">Body fat % <span style="font-weight:400">(optional)</span></label>
+        <input type="number" id="bf" min="3" max="65" placeholder="leave blank if unknown" inputmode="decimal">
+      </div>
+      <div class="err" id="err1"></div>
+    </section>
+
+    <section class="step" data-step="2">
+      <div class="step-no">03 / Daily movement</div>
+      <div class="q">How active is a normal day?</div>
+      <p class="hint">Not counting the workouts you're about to plan — just your baseline life and job.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="activity" value="sedentary"><span class="ot">Sedentary</span><span class="od">Desk work, little walking</span></label>
+        <label class="opt"><input type="radio" name="activity" value="light"><span class="ot">Lightly active</span><span class="od">On your feet some, light errands</span></label>
+        <label class="opt"><input type="radio" name="activity" value="moderate"><span class="ot">Moderately active</span><span class="od">Walking much of the day</span></label>
+        <label class="opt"><input type="radio" name="activity" value="active"><span class="ot">Very active</span><span class="od">Physical job, on feet all day</span></label>
+      </div>
+      <div class="err" id="err2"></div>
+    </section>
+
+    <section class="step" data-step="3">
+      <div class="step-no">04 / Goal</div>
+      <div class="q">What are you optimizing for?</div>
+      <p class="hint">This sets your calorie direction and how the week is weighted.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="goal" value="loss"><span class="ot">Fat loss</span><span class="od">Lose weight as efficiently as possible</span></label>
+        <label class="opt"><input type="radio" name="goal" value="retain"><span class="ot">Lose fat, keep muscle</span><span class="od">Priority on holding lean mass while losing</span></label>
+        <label class="opt"><input type="radio" name="goal" value="recomp"><span class="ot">Recomposition</span><span class="od">Roughly hold weight, shift fat to muscle</span></label>
+        <label class="opt"><input type="radio" name="goal" value="gain"><span class="ot">Build muscle</span><span class="od">Add lean mass, accept some fat gain</span></label>
+      </div>
+      <div class="err" id="err3"></div>
+    </section>
+
+    <section class="step" data-step="4">
+      <div class="step-no">05 / Profile</div>
+      <div class="q">A few things that change the plan</div>
+      <p class="hint">GLP-1 status matters: appetite suppression makes protein and lifting the levers that protect muscle.</p>
+      <div class="field">
+        <span class="lbl">Lifting experience</span>
+        <div class="opts">
+          <label class="opt"><input type="radio" name="exp" value="beginner"><span class="ot">Beginner</span><span class="od">New, or back after a long break</span></label>
+          <label class="opt"><input type="radio" name="exp" value="intermediate"><span class="ot">Intermediate</span><span class="od">Trained consistently before</span></label>
+          <label class="opt"><input type="radio" name="exp" value="advanced"><span class="ot">Advanced</span><span class="od">Years of structured training</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">On a GLP-1 medication? (Zepbound, Wegovy, Ozempic, Mounjaro…)</span>
+        <div class="opts two">
+          <label class="opt"><input type="radio" name="glp1" value="yes"><span class="ot">Yes</span></label>
+          <label class="opt"><input type="radio" name="glp1" value="no"><span class="ot">No</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">Want to maintain cardio / conditioning fitness?</span>
+        <div class="opts two">
+          <label class="opt"><input type="radio" name="cardio" value="yes"><span class="ot">Yes</span></label>
+          <label class="opt"><input type="radio" name="cardio" value="no"><span class="ot">No, lifting first</span></label>
+        </div>
+      </div>
+      <div class="err" id="err4"></div>
+    </section>
+
+    <section class="step" data-step="5">
+      <div class="step-no">06 / Schedule</div>
+      <div class="q">How much can you realistically train?</div>
+      <p class="hint">Be honest — a plan you keep beats a perfect plan you skip.</p>
+      <div class="field">
+        <span class="lbl">Days per week</span>
+        <div class="slider-val"><span id="daysOut">4</span><span>days / week</span></div>
+        <input type="range" id="days" min="2" max="7" value="4" step="1">
+      </div>
+      <div class="field">
+        <span class="lbl">Equipment access</span>
+        <div class="opts">
+          <label class="opt"><input type="radio" name="equip" value="gym"><span class="ot">Full gym</span><span class="od">Barbells, machines, dumbbells</span></label>
+          <label class="opt"><input type="radio" name="equip" value="home"><span class="ot">Home basics</span><span class="od">Dumbbells, bands, a bench</span></label>
+          <label class="opt"><input type="radio" name="equip" value="body"><span class="ot">Bodyweight only</span><span class="od">No equipment</span></label>
+        </div>
+      </div>
+      <div class="err" id="err5"></div>
+    </section>
+
+    <div class="nav">
+      <button class="btn ghost" id="back" disabled>Back</button>
+      <button class="btn primary" id="next">Next</button>
+    </div>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <footer>EMSR · built to be edited · open index.html</footer>
+</div>
+
+<script>
+const TOTAL = 6;
+let step = 0, units = 'metric';
+const state = {};
+
+/* ---------- Theme ---------- */
+const root = document.documentElement;
+const themeBtn = document.getElementById('themeBtn');
+function setTheme(t){
+  root.setAttribute('data-theme', t);
+  themeBtn.innerHTML = t==='dark' ? '&#9728; Light' : '&#9790; Dark';
+}
+themeBtn.addEventListener('click', ()=> setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'));
+if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+
+/* ---------- Accent ---------- */
+const PRESETS = ['#DC4B3E','#0F8B7E','#3B6FE0','#7C4DD6','#D6336C','#C2790B'];
+function hexToRgb(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16));}
+function toHex(rgb){return '#'+rgb.map(x=>Math.max(0,Math.min(255,Math.round(x))).toString(16).padStart(2,'0')).join('');}
+function shade(hex,amt){const c=hexToRgb(hex);const t=amt<0?0:255;const p=Math.abs(amt);return toHex(c.map(v=>v+(t-v)*p));}
+function applyAccent(hex){
+  root.style.setProperty('--accent',hex);
+  root.style.setProperty('--accent-hover',shade(hex,-0.18));
+  root.style.setProperty('--accent-bright',shade(hex,0.24));
+}
+const swWrap = document.getElementById('swatches');
+let custom;
+function buildSwatches(){
+  PRESETS.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='swatch'; b.style.background=c; b.title='Accent color'; b.dataset.color=c;
+    b.addEventListener('click',()=>{ applyAccent(c); markSel(b); });
+    swWrap.appendChild(b);
+  });
+  const lab=document.createElement('label');
+  lab.className='swatch custom'; lab.title='Custom color'; lab.textContent='+';
+  custom=document.createElement('input'); custom.type='color'; custom.value='#DC4B3E';
+  custom.addEventListener('input',()=>{ applyAccent(custom.value); markSel(lab); });
+  lab.appendChild(custom); swWrap.appendChild(lab);
+}
+function markSel(el){ [...swWrap.children].forEach(c=>c.classList.toggle('sel', c===el)); }
+buildSwatches();
+applyAccent(PRESETS[0]); markSel(swWrap.children[0]);
+
+/* ---------- Progress rail ---------- */
+const rail = document.getElementById('rail');
+for(let i=0;i<TOTAL;i++) rail.appendChild(document.createElement('span'));
+function paintRail(){[...rail.children].forEach((el,i)=>{el.className=i<step?'done':(i===step?'active':'');});}
+
+const steps = [...document.querySelectorAll('.step')];
+const backBtn = document.getElementById('back');
+const nextBtn = document.getElementById('next');
+function showStep(){
+  steps.forEach(s=> s.classList.toggle('show', +s.dataset.step===step));
+  backBtn.disabled = step===0;
+  nextBtn.textContent = step===TOTAL-1 ? 'See my plan' : 'Next';
+  paintRail();
+  document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+document.getElementById('unitSeg').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  units=b.dataset.unit;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on', x===b));
+  document.getElementById('metricFields').style.display = units==='metric'?'block':'none';
+  document.getElementById('imperialFields').style.display = units==='imperial'?'block':'none';
+});
+
+const daysInput = document.getElementById('days');
+daysInput.addEventListener('input', ()=> document.getElementById('daysOut').textContent = daysInput.value);
+
+function radioVal(name){const el=document.querySelector('input[name="'+name+'"]:checked');return el?el.value:null;}
+function setErr(msg){document.getElementById('err'+step).textContent=msg||'';}
+
+function validateAndCollect(){
+  setErr('');
+  if(step===0){
+    state.sex=radioVal('sex'); state.age=parseFloat(document.getElementById('age').value);
+    if(!state.sex) return setErr('Pick one so the estimate works.'),false;
+    if(!(state.age>=14&&state.age<=100)) return setErr('Enter an age between 14 and 100.'),false;
+  }
+  if(step===1){
+    if(units==='metric'){
+      state.heightCm=parseFloat(document.getElementById('cm').value);
+      state.weightKg=parseFloat(document.getElementById('kg').value);
+      if(!(state.heightCm>=120&&state.heightCm<=230)) return setErr('Enter a height in cm.'),false;
+      if(!(state.weightKg>=35&&state.weightKg<=300)) return setErr('Enter a weight in kg.'),false;
+    } else {
+      const ft=parseFloat(document.getElementById('ft').value);
+      const inch=parseFloat(document.getElementById('inch').value)||0;
+      const lb=parseFloat(document.getElementById('lb').value);
+      if(!(ft>=4&&ft<=7)) return setErr('Enter height in feet.'),false;
+      if(!(lb>=75&&lb<=660)) return setErr('Enter a weight in pounds.'),false;
+      state.heightCm=(ft*12+inch)*2.54; state.weightKg=lb*0.453592;
+    }
+    const bf=parseFloat(document.getElementById('bf').value);
+    state.bodyFat=(bf>=3&&bf<=65)?bf:null;
+  }
+  if(step===2){state.activity=radioVal('activity'); if(!state.activity) return setErr('Pick your baseline activity.'),false;}
+  if(step===3){state.goal=radioVal('goal'); if(!state.goal) return setErr('Choose a goal.'),false;}
+  if(step===4){
+    state.exp=radioVal('exp'); state.glp1=radioVal('glp1'); state.cardio=radioVal('cardio');
+    if(!state.exp) return setErr('Pick your experience level.'),false;
+    if(!state.glp1) return setErr('Let us know about GLP-1 — it changes the plan.'),false;
+    if(!state.cardio) return setErr('One more: cardio yes or no?'),false;
+  }
+  if(step===5){state.days=parseInt(daysInput.value,10); state.equip=radioVal('equip'); if(!state.equip) return setErr('Pick your equipment.'),false;}
+  return true;
+}
+
+nextBtn.addEventListener('click', ()=>{
+  if(!validateAndCollect()) return;
+  if(step===TOTAL-1){ renderResult(); return; }
+  step++; showStep();
+});
+backBtn.addEventListener('click', ()=>{ if(step>0){step--; showStep();} });
+
+/* ---------- Calculations ---------- */
+function compute(){
+  const {weightKg:kg,heightCm:cm,age,sex,bodyFat,activity,goal,glp1,cardio}=state;
+  const glp=glp1==='yes';
+  let bmr;
+  if(bodyFat){ bmr=370+21.6*(kg*(1-bodyFat/100)); }
+  else { bmr=10*kg+6.25*cm-5*age+(sex==='male'?5:-161); }
+  bmr=Math.round(bmr);
+  const mult={sedentary:1.2,light:1.375,moderate:1.55,active:1.725}[activity];
+  const tdee=Math.round(bmr*mult);
+  const factor={loss:0.80,retain:0.85,recomp:1.0,gain:1.10}[goal];
+  let cals=Math.round(tdee*factor);
+  cals=Math.max(cals, sex==='male'?1500:1200);
+  const bmiCapKg=25*Math.pow(cm/100,2);
+  const refKg=Math.min(kg,bmiCapKg);
+  let perKg=(goal==='gain'||goal==='recomp')?1.8:2.0;
+  if(glp) perKg+=0.2;
+  const protein=Math.round(refKg*perKg);
+  const proteinPerLb=(protein/(refKg*2.20462)).toFixed(2);
+  const week=buildWeek(state.days, cardio==='yes', goal, glp);
+  return {bmr,tdee,cals,protein,proteinPerLb,week,glp};
+}
+function s(t,d,ty){return{title:t,detail:d,type:ty};}
+function liftLabels(n){
+  if(n<=1) return [s('Full-body strength','Compound lifts — squat, hinge, push, pull','lift')];
+  if(n===2) return [s('Full body A','Squat focus + upper push','lift'),s('Full body B','Hinge focus + upper pull','lift')];
+  if(n===3) return [s('Full body A','Squat + press','lift'),s('Full body B','Hinge + pull','lift'),s('Full body C','Single-leg + accessories','lift')];
+  if(n===4) return [s('Upper','Press & pull volume','lift'),s('Lower','Squat + quads','lift'),s('Upper','Horizontal focus','lift'),s('Lower','Hinge + posterior chain','lift')];
+  return [s('Push','Chest, shoulders, triceps','lift'),s('Pull','Back, biceps','lift'),s('Legs','Squat + hinge','lift'),s('Upper','Strength','lift'),s('Lower','Strength','lift')];
+}
+function condLabels(n,glp){
+  if(n<=0) return [];
+  const z=glp?s('Conditioning','Zone 2, 25–35 min — keep it easy in a deficit','cond'):s('Conditioning','Zone 2 or steady cardio, 25–35 min','cond');
+  if(n===1) return [z];
+  const iv=glp?s('Intervals','Low-impact intervals, 15–20 min','cond'):s('Intervals','Hill or bike intervals, 15–20 min','cond');
+  return [z,iv];
+}
+function counts(days,wc,goal){
+  let lift,cond;
+  if(days<=2){lift=2;cond=0;}
+  else if(days===3){lift=3;cond=0;}
+  else if(days===4){lift=wc?3:4;cond=wc?1:0;}
+  else if(days===5){lift=wc?3:4;cond=wc?2:1;}
+  else if(days===6){lift=wc?4:5;cond=wc?2:1;}
+  else {lift=wc?4:5;cond=wc?2:1;}
+  if(goal==='gain') cond=Math.min(cond,1);
+  return {lift,cond};
+}
+function pickSlots(t){
+  if(t>=7) return [0,1,2,3,4,5,6];
+  const out=[],used=new Set();
+  for(let k=0;k<t;k++){let p=Math.round(k*7/t);while(used.has(p))p=(p+1)%7;used.add(p);out.push(p);}
+  return out.sort((a,b)=>a-b);
+}
+function buildWeek(days,wc,goal,glp){
+  const {lift,cond}=counts(days,wc,goal);
+  const sessions=liftLabels(lift).concat(condLabels(cond,glp));
+  const slots=pickSlots(sessions.length);
+  const walk=(goal==='loss'||goal==='retain')?'8,000–10,000 steps':'7,000–8,000 steps';
+  const week=Array.from({length:7},()=>s('Walk + recover',walk,'rest'));
+  slots.forEach((slot,i)=> week[slot]=sessions[i]);
+  return week;
+}
+function notesFor(goal,glp,exp){
+  const n=[];
+  if(glp){
+    n.push('On a GLP-1, hitting your protein floor is the single biggest lever for keeping muscle — appetite suppression makes it easy to under-eat protein.');
+    n.push('Lifting is non-negotiable here. Without resistance training, a large share of GLP-1 weight loss can come from lean mass.');
+    n.push('Keep high-intensity volume modest while eating less — recovery is reduced. Add conditioning only if you can recover from it.');
+  }
+  if(goal==='loss') n.push('A ~20% deficit is the target. Expect roughly 0.5–1% of body weight lost per week; faster than that usually costs muscle.');
+  if(goal==='retain') n.push('A gentler deficit plus hard lifting is the recomposition-friendly path — slower scale movement, better muscle retention.');
+  if(goal==='recomp') n.push('Eating near maintenance, the scale may barely move while your shape changes. Track strength and photos, not just weight.');
+  if(goal==='gain') n.push('A small surplus limits fat gain. Push for progressive overload — add reps or load most weeks.');
+  if(exp==='beginner') n.push('As a beginner, leave 1–3 reps in reserve and prioritize learning the movements over chasing heavy loads.');
+  n.push('Daily walking is your easiest recovery-friendly calorie burn — it adds output without taxing the muscle-building system.');
+  n.push('Sleep is the fourth pillar: 7–9 hours protects recovery, appetite signals, and the muscle you are working to keep.');
+  return n;
+}
+
+/* ---------- Export ---------- */
+function downloadText(filename,text){
+  const blob=new Blob([text],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function buildSummaryText(r,calLo,calHi,dayNames){
+  const L=[];
+  L.push('EMSR — Eat · Move · Sleep · Repeat');
+  L.push('Personal Training Plan');
+  L.push('Generated: '+new Date().toLocaleString());
+  L.push('');
+  L.push('DAILY NUMBERS');
+  L.push('  Resting burn (BMR): '+r.bmr+' kcal');
+  L.push('  Maintenance (TDEE): '+r.tdee+' kcal');
+  L.push('  Calorie target:     '+calLo+'–'+calHi+' kcal');
+  L.push('  Protein floor:      '+r.protein+' g  (~'+r.proteinPerLb+' g/lb lean)');
+  L.push('');
+  L.push('WEEKLY PLAN ('+state.days+' training day'+(state.days>1?'s':'')+')');
+  r.week.forEach((d,i)=> L.push('  '+dayNames[i]+'  '+d.title+' — '+d.detail));
+  L.push('');
+  L.push('WHAT MATTERS MOST');
+  notesFor(state.goal,r.glp,state.exp).forEach(t=> L.push('  - '+t));
+  L.push('');
+  L.push('Educational estimate (Mifflin-St Jeor / Katch-McArdle + standard training');
+  L.push('guidelines), not medical or nutrition advice. If you are on a GLP-1 medication');
+  L.push('or have a health condition, confirm changes with your clinician or dietitian.');
+  return L.join('\n');
+}
+
+/* ---------- Render ---------- */
+function renderResult(){
+  const r=compute();
+  const calLo=Math.round(r.cals/5)*5-75;
+  const calHi=Math.round(r.cals/5)*5+75;
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  const weekHTML=r.week.map((d,i)=>'<div class="day"><div class="dn">'+dayNames[i]+'</div><div><div class="dt">'+d.title+'<span class="tag '+d.type+'">'+(d.type==='lift'?'Lift':d.type==='cond'?'Cardio':'Easy')+'</span></div><div class="dd">'+d.detail+'</div></div></div>').join('');
+  const notesHTML=notesFor(state.goal,r.glp,state.exp).map(t=>'<li>'+t+'</li>').join('');
+
+  document.querySelector('.card').style.display='none';
+  document.querySelector('.rail').style.display='none';
+
+  const el=document.getElementById('result');
+  el.innerHTML=
+    '<div class="print-head"><div class="ph-brand">EMSR</div><div class="ph-tag">Eat · Move · Sleep · Repeat</div><div class="ph-meta">Personal training plan · '+new Date().toLocaleDateString()+'</div></div>'+
+    '<div class="readout"><div class="rl">Your daily numbers</div><div class="metrics">'+
+      '<div class="metric"><div class="mv">'+r.bmr+'<span class="u">kcal</span></div><div class="mk">Resting burn (BMR)</div></div>'+
+      '<div class="metric"><div class="mv">'+r.tdee+'<span class="u">kcal</span></div><div class="mk">Maintenance (TDEE)</div></div>'+
+      '<div class="metric hero"><div class="mv">'+calLo+'–'+calHi+'<span class="u">kcal</span></div><div class="mk">Daily calorie target</div></div>'+
+      '<div class="metric hero"><div class="mv">'+r.protein+'<span class="u">g</span></div><div class="mk">Protein floor · ~'+r.proteinPerLb+' g/lb lean</div></div>'+
+    '</div></div>'+
+    '<div class="panel"><h3>Your week — '+state.days+' training day'+(state.days>1?'s':'')+'</h3><div class="week">'+weekHTML+'</div></div>'+
+    '<div class="panel"><h3>What matters most</h3><ul class="notes">'+notesHTML+'</ul></div>'+
+    '<p class="disclaimer">This is an educational estimate built on standard equations (Mifflin-St Jeor / Katch-McArdle and common training guidelines), not medical or nutrition advice. Calorie and protein needs vary, and if you\'re on a GLP-1 medication or have any health condition, run changes by your prescribing clinician or a registered dietitian first.</p>'+
+    '<div class="nav"><div class="grp"><button class="btn primary" id="printBtn">Print / Save PDF</button><button class="btn ghost" id="dlBtn">Download summary</button></div><button class="btn ghost" id="restart">Start over</button></div>';
+
+  el.classList.add('show');
+  document.getElementById('printBtn').addEventListener('click', ()=> window.print());
+  document.getElementById('dlBtn').addEventListener('click', ()=> downloadText('EMSR-training-plan.txt', buildSummaryText(r,calLo,calHi,dayNames)));
+  document.getElementById('restart').addEventListener('click', ()=> location.reload());
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+showStep();
+</script>
+</body>
+</html>
